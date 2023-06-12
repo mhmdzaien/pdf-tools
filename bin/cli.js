@@ -8,6 +8,7 @@ const jimp = require("jimp");
 const imgToPDF = require("image-to-pdf");
 const pdfLib = require("pdf-lib");
 const { PDFDocument, degrees } = pdfLib;
+const DocxMerger = require("docx-merger");
 
 const optionsArgument = yargs
   .usage("Usage: pdf-tools [options]")
@@ -25,12 +26,12 @@ const optionsArgument = yargs
   })
   .option("t", {
     alias: "type",
-    describe: "Jenis output, pilihan : greyscale,nonocr",
+    describe: "Jenis output, pilihan : greyscale,nonocr,mergeword",
     type: "String",
     demandOption: true,
   }).argv;
 
-function searchPdfFile(folderPath, currentDepth, depth) {
+function searchPdfFile(folderPath, currentDepth, depth, extension = ".pdf") {
   let files = [];
   if (fs.statSync(folderPath).isFile()) {
     files.push(folderPath);
@@ -41,7 +42,7 @@ function searchPdfFile(folderPath, currentDepth, depth) {
     let readFiles = fs.readdirSync(folderPath);
     readFiles.forEach((item) => {
       let ext = path.extname(item);
-      if (ext.toLowerCase() == ".pdf") {
+      if (ext.toLowerCase() == extension) {
         files.push(path.join(folderPath, item));
       } else if (ext == "") {
         files = files.concat(
@@ -117,10 +118,30 @@ async function forceToPortrait(doc, pathOriginal) {
   return outputFile;
 }
 
+async function mergeDoc(path) {
+  let files = [];
+  let readFiles = fs.readdirSync(path);
+  readFiles.forEach((item) => {
+    let ext = path.extname(item);
+    if ([".doc", "docx"].includes(ext.toLowerCase())) {
+      files.push(fs.readFileSync(path.join(folderPath, item), "binary"));
+    }
+  });
+
+  var docx = new DocxMerger({}, files);
+  docx.save("nodebuffer", function (data) {
+    fs.writeFile("output.docx", data, function (err) {});
+  });
+}
+
 async function run(yArgument) {
-  let listFile = searchPdfFile(yArgument.s, 0, yArgument.d);
+  let listFile = [];
   switch (yArgument.type) {
+    case "mergeword":
+      mergeDoc(yArgument.s);
+      break;
     case "greyscale":
+      listFile = searchPdfFile(yArgument.s, 0, yArgument.d);
       for (const item of listFile) {
         console.log(`Konversi file : ${path.basename(item)}`);
 
@@ -138,6 +159,7 @@ async function run(yArgument) {
       }
       break;
     case "nonocr":
+      listFile = searchPdfFile(yArgument.s, 0, yArgument.d);
       for (const item of listFile) {
         console.log(`Konversi file : ${path.basename(item)}`);
         let originalFileByte = fs.readFileSync(item);
