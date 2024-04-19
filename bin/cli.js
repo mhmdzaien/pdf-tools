@@ -67,7 +67,7 @@ async function pdfToImage(pdfPath, suffix = "") {
   fs.mkdirSync(outputPath);
   let outputImages = await pdf2img.convert(pdfPath, { scale: 2.0 });
   outputImages.forEach((val, ind) => {
-    fs.writeFileSync(path.join(outputPath, `page_${ind}.png`), val);
+    fs.writeFileSync(path.join(outputPath, `${ind}.png`), val);
   });
   return outputPath;
 }
@@ -95,7 +95,9 @@ async function imageToGreyscale(imagePath) {
 }
 
 function imageToPdf(imageFolderPath, size) {
-  let readFiles = fs.readdirSync(imageFolderPath);
+  let readFiles = fs.readdirSync(imageFolderPath).sort((a, b) => {
+    return Number(a.split(".")[0]) - Number(b.split(".")[0]);
+  });
   imgToPDF(
     readFiles.map((item) => path.join(imageFolderPath, item)),
     size
@@ -190,6 +192,5 @@ async function runtest() {
   // fs.rmSync(imageFolder, { recursive: true, force: true });
   fs.rmSync(greyscaleFolder, { recursive: true, force: true });
 }
-
 // runtest();
 run(optionsArgument);
